@@ -1,0 +1,553 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Usuarios{% endblock %}
+
+{% block content %}
+<div class="w-full" x-data="{ 
+    showCreateModal: false, 
+    showEditModal: false, 
+    showDeleteModal: false,
+    editUrl: '',
+    deleteUrl: '',
+    deleteName: '',
+    loadingEdit: false,
+    loadingCreate: false,
+    openEditModal(url) {
+        this.showEditModal = true;
+        this.loadingEdit = true;
+        this.editUrl = url;
+        
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('edit-form-outer').innerHTML = html;
+            this.loadingEdit = false;
+        })
+        .catch(err => {
+            console.error('Error loading form:', err);
+            this.loadingEdit = false;
+            Swal.fire('Error', 'Error al cargar el formulario.', 'error');
+        });
+    },
+    submitCreateForm(event) {
+        event.preventDefault();
+        this.loadingCreate = true;
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            }
+            return response.text();
+        })
+        .then(data => {
+            if (typeof data === 'object' && data.success) {
+                // Éxito - recargar la página
+                window.location.href = data.redirect_url || window.location.href;
+            } else if (typeof data === 'string') {
+                // HTML con errores - actualizar el contenedor del formulario
+                document.getElementById('create-form-container').innerHTML = data;
+                this.loadingCreate = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            this.loadingCreate = false;
+            Swal.fire('Error', 'Error al procesar el formulario. Por favor, intente nuevamente.', 'error');
+        });
+    },
+    submitEditForm(event) {
+        event.preventDefault();
+        this.loadingEdit = true;
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            }
+            return response.text();
+        })
+        .then(data => {
+            if (typeof data === 'object' && data.success) {
+                // Éxito - recargar la página
+                window.location.href = data.redirect_url || window.location.href;
+            } else if (typeof data === 'string') {
+                // HTML con errores - actualizar el contenedor del formulario
+                document.getElementById('edit-form-outer').innerHTML = data;
+                this.loadingEdit = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            this.loadingEdit = false;
+            Swal.fire('Error', 'Error al procesar el formulario. Por favor, intente nuevamente.', 'error');
+        });
+    }
+}">
+    
+    <!-- Toolbar -->
+    <div class="flex justify-between items-center mb-4 bg-white p-3 border border-gray-200 rounded-sm shadow-sm">
+        <div>
+            <h1 class="text-lg font-bold text-gray-800 uppercase tracking-tight">
+                <i class="fas fa-users-cog mr-2 text-gray-500"></i> Gestión de Usuarios
+            </h1>
+        </div>
+        <div>
+            <button @click="showCreateModal = true" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none shadow-sm transition-colors">
+                <i class="fas fa-plus mr-1"></i> NUEVO USUARIO
+            </button>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-white border border-gray-300 rounded-sm shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-200">Usuario</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-200">Email</th>
+                        <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-200">Rol</th>
+                        <th scope="col" class="px-4 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-200">Estado</th>
+                        <th scope="col" class="px-4 py-3 text-right text-xs font-bold text-gray-600 uppercase tracking-wider border-b border-gray-200">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for u in users %}
+                    <tr class="hover:bg-blue-50 transition-colors">
+                        <td class="px-4 py-2 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-6 w-6 rounded-sm bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 uppercase border border-gray-300">
+                                    {{ u.username|make_list|first }}
+                                </div>
+                                <div class="ml-2">
+                                    <div class="text-xs font-semibold text-gray-900">{{ u.username }}</div>
+                                    {% if u.first_name or u.last_name %}
+                                    <div class="text-[10px] text-gray-500">{{ u.get_full_name }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap text-xs text-gray-600">
+                            {{ u.email|default:"-" }}
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap text-xs">
+                            {% if u.is_superuser %}
+                                <span class="px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-sm bg-purple-100 text-purple-800 border border-purple-200">SUPERADMIN</span>
+                            {% elif u.is_staff %}
+                                <span class="px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-sm bg-blue-100 text-blue-800 border border-blue-200">STAFF</span>
+                            {% else %}
+                                <span class="px-1.5 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-sm bg-gray-100 text-gray-800 border border-gray-200">USUARIO</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap text-center">
+                            {% if u == request.user %}
+                                <span class="text-green-600 font-medium text-xs"><i class="fas fa-circle text-[8px] mr-1"></i>Activo</span>
+                            {% else %}
+                                <!-- Switch para activar/desactivar -->
+                                <!-- Switch para activar/desactivar -->
+                                <div x-data="{ 
+                                    userId: {{ u.pk }},
+                                    isActive: {{ u.is_active|yesno:'true,false' }},
+                                    toggleActive() {
+                                        // Abrir modal de confirmación
+                                        $dispatch('open-toggle-confirm', { 
+                                            userId: this.userId, 
+                                            username: '{{ u.username }}',
+                                            url: '{% url 'accounts:user_toggle_active' u.pk %}',
+                                            currentState: this.isActive
+                                        });
+                                    }
+                                }" 
+                                @user-toggled.window="
+                                    if ($event.detail.userId === userId) {
+                                        isActive = $event.detail.newState;
+                                    }
+                                "
+                                class="inline-flex items-center">
+                                    <button @click="toggleActive()" 
+                                            type="button" 
+                                            :class="isActive ? 'bg-green-600' : 'bg-gray-300'" 
+                                            class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2">
+                                        <span :class="isActive ? 'translate-x-4' : 'translate-x-0'" 
+                                              class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                                    </button>
+                                    <span class="ml-2 text-xs" :class="isActive ? 'text-green-600 font-medium' : 'text-gray-500'">
+                                        <template x-if="isActive">
+                                            <span><i class="fas fa-circle text-[8px] mr-1"></i>Activo</span>
+                                        </template>
+                                        <template x-if="!isActive">
+                                            <span><i class="fas fa-circle text-[8px] mr-1"></i>Inactivo</span>
+                                        </template>
+                                    </span>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap text-right text-xs font-medium space-x-1">
+                            <button @click="openEditModal('{% url 'accounts:user_update' u.pk %}')" class="text-indigo-600 hover:text-indigo-900 bg-white border border-gray-300 px-2 py-1 rounded-sm shadow-sm hover:bg-gray-50 mb-0.5 inline-block">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            {% if u != request.user %}
+                            <button @click="showDeleteModal = true; deleteUrl = '{% url 'accounts:user_delete' u.pk %}'; deleteName = '{{ u.username }}'" class="text-red-600 hover:text-red-900 bg-white border border-gray-300 px-2 py-1 rounded-sm shadow-sm hover:bg-gray-50 mb-0.5 inline-block">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-10 text-center text-gray-500 text-sm bg-gray-50">
+                            <i class="fas fa-folder-open text-gray-300 text-3xl mb-2 block"></i>
+                            No se encontraron registros.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Footer / Pagination -->
+        {% if is_paginated %}
+        <div class="bg-gray-50 px-4 py-2 border-t border-gray-200 flex items-center justify-between sm:px-6">
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-xs text-gray-700">
+                        Mostrando <span class="font-medium">{{ page_obj.start_index }}</span> a <span class="font-medium">{{ page_obj.end_index }}</span> de <span class="font-medium">{{ paginator.count }}</span> resultados
+                    </p>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}" class="relative inline-flex items-center px-2 py-1 rounded-l-sm border border-gray-300 bg-white text-xs font-medium text-gray-500 hover:bg-gray-50">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                        {% endif %}
+                        {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}" class="relative inline-flex items-center px-2 py-1 rounded-r-sm border border-gray-300 bg-white text-xs font-medium text-gray-500 hover:bg-gray-50">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- MODAL: CREAR USUARIO -->
+    <div x-show="showCreateModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showCreateModal" x-transition:enter="ease-out duration-300" class="fixed inset-0 transition-opacity" @click="showCreateModal = false">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div x-show="showCreateModal" x-transition:enter="ease-out duration-300" class="inline-block align-bottom bg-white rounded-sm text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-300 relative">
+                
+                <!-- Loading Overlay -->
+                <div x-show="loadingCreate" class="absolute inset-0 bg-white bg-opacity-75 z-10 flex items-center justify-center">
+                    {% include 'components/loading.html' with inline=True message="Creando usuario..." %}
+                </div>
+
+                <div class="bg-gray-800 px-4 py-3 sm:px-6 flex justify-between items-center">
+                    <h3 class="text-sm font-bold text-white uppercase tracking-tight">Registar Nuevo Usuario Administrativo</h3>
+                    <button @click="showCreateModal = false" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <form action="{% url 'accounts:user_create' %}" method="post" class="space-y-4" @submit="submitCreateForm">
+                        {% csrf_token %}
+                        <div id="create-form-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% include 'accounts/partials/user_form_fields.html' with form=create_form %}
+                        </div>
+                        <div class="pt-4 border-t border-gray-100 flex justify-end space-x-2">
+                            <button type="button" @click="showCreateModal = false" class="px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors uppercase">Cancelar</button>
+                            <button type="submit" class="px-3 py-1.5 border border-transparent text-xs font-medium rounded-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors uppercase">
+                                <i class="fas fa-save mr-1"></i> Confirmar Registro
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITAR USUARIO -->
+    <div x-show="showEditModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showEditModal" @click="showEditModal = false" class="fixed inset-0 transition-opacity">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div x-show="showEditModal" class="inline-block align-bottom bg-white rounded-sm text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full border border-gray-300 relative">
+                
+                <!-- Loading Overlay -->
+                <div x-show="loadingEdit" class="absolute inset-0 bg-white bg-opacity-75 z-10 flex items-center justify-center">
+                    {% include 'components/loading.html' with inline=True message="Procesando..." %}
+                </div>
+
+                <div class="bg-gray-800 px-4 py-3 sm:px-6 flex justify-between items-center">
+                    <h3 class="text-sm font-bold text-white uppercase tracking-tight">Modificar Datos de Usuario</h3>
+                    <button @click="showEditModal = false" class="text-gray-400 hover:text-white transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <form :action="editUrl" method="post" class="space-y-4" @submit="submitEditForm">
+                        {% csrf_token %}
+                        <div id="edit-form-outer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- El contenido se cargará vía AJAX -->
+                        </div>
+                        <div class="pt-4 border-t border-gray-100 flex justify-end space-x-2">
+                            <button type="button" @click="showEditModal = false" class="px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors uppercase">Cancelar</button>
+                            <button type="submit" class="px-3 py-1.5 border border-transparent text-xs font-medium rounded-sm text-white bg-blue-600 hover:bg-blue-700 transition-colors uppercase">Guardar Cambios</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CONFIRMAR TOGGLE DE ESTADO -->
+    <div x-data="{
+        showToggleModal: false,
+        toggleUserId: null,
+        toggleUsername: '',
+        toggleUrl: '',
+        toggleCurrentState: false,
+        toggleProcessing: false,
+        confirmToggle() {
+            this.toggleProcessing = true;
+            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const targetId = this.toggleUserId;
+            const url = this.toggleUrl;
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.dispatchEvent(new CustomEvent('user-toggled', { 
+                        detail: { userId: targetId, newState: data.is_active } 
+                    }));
+                    
+                    this.showToggleModal = false;
+                    this.toggleProcessing = false;
+                    
+                    if (window.showNotification) {
+                        window.showNotification(data.message, 'success');
+                    }
+                } else {
+                    throw new Error(data.error || 'Error desconocido');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.toggleProcessing = false;
+                this.showToggleModal = false;
+                Swal.fire('Error', 'Error: ' + (error.message || 'No se pudo cambiar el estado.'), 'error');
+            });
+        }
+    }"
+    @open-toggle-confirm.window="
+        showToggleModal = true;
+        toggleUserId = $event.detail.userId;
+        toggleUsername = $event.detail.username;
+        toggleUrl = $event.detail.url; // Recibir URL correcta
+        toggleCurrentState = $event.detail.currentState;
+    "
+    x-show="showToggleModal" 
+    class="fixed inset-0 z-50 overflow-y-auto" 
+    style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showToggleModal" @click="if(!toggleProcessing) showToggleModal = false" class="fixed inset-0 transition-opacity">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div x-show="showToggleModal" class="inline-block align-bottom bg-white rounded-sm text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-sm sm:w-full border border-gray-300 relative">
+                
+                <!-- Loading Overlay -->
+                <div x-show="toggleProcessing" class="absolute inset-0 bg-white bg-opacity-75 z-10 flex items-center justify-center">
+                     {% include 'components/loading.html' with inline=True message="Actualizando estado..." %}
+                </div>
+
+                <div :class="toggleCurrentState ? 'bg-orange-600' : 'bg-green-600'" class="px-4 py-2.5 text-white text-center">
+                    <i class="fas fa-power-off mr-2"></i> 
+                    <span x-text="toggleCurrentState ? 'DESACTIVAR USUARIO' : 'ACTIVAR USUARIO'"></span>
+                </div>
+                <div class="p-4">
+                    <div class="mx-auto flex items-center justify-center h-10 w-10 rounded-full mb-3" 
+                         :class="toggleCurrentState ? 'bg-orange-100' : 'bg-green-100'">
+                        <i class="fas fa-power-off" :class="toggleCurrentState ? 'text-orange-600' : 'text-green-600'"></i>
+                    </div>
+                    <p class="text-xs text-gray-600 mb-4 text-center">
+                        ¿Confirma que desea <strong x-text="toggleCurrentState ? 'desactivar' : 'activar'"></strong> 
+                        al usuario <strong x-text="toggleUsername" class="text-gray-900"></strong>?
+                    </p>
+                    <div class="flex space-x-2">
+                        <button type="button" 
+                                @click="showToggleModal = false" 
+                                :disabled="toggleProcessing"
+                                class="flex-1 px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors uppercase disabled:opacity-50">
+                            Cancelar
+                        </button>
+                        <button type="button" 
+                                @click="confirmToggle()"
+                                :disabled="toggleProcessing"
+                                :class="toggleCurrentState ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'"
+                                class="flex-1 px-3 py-1.5 border border-transparent text-xs font-medium rounded-sm text-white transition-colors uppercase shadow-sm disabled:opacity-50">
+                            Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ELIMINAR USUARIO -->
+    <div x-show="showDeleteModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div x-show="showDeleteModal" @click="showDeleteModal = false" class="fixed inset-0 transition-opacity">
+                <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+            </div>
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+            <div x-show="showDeleteModal" class="inline-block align-bottom bg-white rounded-sm text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full border border-gray-300 text-center">
+                <div class="bg-red-600 px-4 py-3 text-white">
+                    <i class="fas fa-exclamation-triangle mr-2"></i> CONFIRMAR ELIMINACIÓN
+                </div>
+                <div class="p-6">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                        <i class="fas fa-trash text-red-600"></i>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-6">
+                        ¿Está seguro que desea eliminar permanentemente al usuario <strong x-text="deleteName" class="text-gray-800"></strong>?
+                    </p>
+                    <form :action="deleteUrl" method="post">
+                        {% csrf_token %}
+                        <div class="flex space-x-3">
+                            <button type="button" @click="showDeleteModal = false" class="flex-1 px-4 py-2 border border-gray-300 text-xs font-medium rounded-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors uppercase">Abortar</button>
+                            <button type="submit" class="flex-1 px-4 py-2 border border-transparent text-xs font-medium rounded-sm text-white bg-red-600 hover:bg-red-700 transition-colors uppercase shadow-sm">Sí, Eliminar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener('alpine:init', () => {
+        // Alpine init si es necesario
+    });
+
+
+// Mejorar el manejo de formularios AJAX para crear/editar
+document.addEventListener('DOMContentLoaded', function() {
+    // Función para verificar si la contraseña es fuerte
+    function isPasswordStrong(val) {
+        return val.length >= 10 && /[A-Z]/.test(val) && /[0-9]/.test(val);
+    }
+    
+    // Interceptar submit del formulario de creación
+    const createForm = document.querySelector('form[action*="create"]');
+    if (createForm) {
+        createForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const passwordField = this.querySelector('input[name="password1"]');
+            if (passwordField && !isPasswordStrong(passwordField.value)) {
+                Swal.fire('Contraseña Débil', 'La contraseña debe tener al menos 10 caracteres, una mayúscula y un número.', 'error');
+                return;
+            }
+            handleFormSubmit(this, 'showCreateModal');
+        });
+    }
+    
+    // Función para manejar submit de formularios
+    function handleFormSubmit(form, modalVar) {
+        const formData = new FormData(form);
+        const url = form.action;
+        
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            }
+            return response.text();
+        })
+        .then(data => {
+            if (typeof data === 'object' && data.success) {
+                // Éxito - recargar la página
+                window.location.href = data.redirect_url || window.location.href;
+            } else if (typeof data === 'string') {
+                // HTML con errores - actualizar el contenedor del formulario
+                const container = form.closest('[id*="form"]');
+                if (container) {
+                    container.innerHTML = data;
+                    // No cerrar el modal - los errores se muestran inline
+                } else {
+                    // Fallback: mostrar en alert
+                    Swal.fire('Error', 'Error en el formulario. Por favor, revise los campos.', 'error');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Fallback con SweetAlert
+            Swal.fire('Error', 'Error al procesar el formulario. Por favor, intente nuevamente.', 'error');
+        });
+    }
+    
+    // Similar para el formulario de edición
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        if (form.matches('form[action*="edit"]') || form.matches('form[action*="update"]')) {
+            e.preventDefault();
+            const passwordField = form.querySelector('input[name="password1"]');
+            if (passwordField && !isPasswordStrong(passwordField.value)) {
+                Swal.fire('Contraseña Débil', 'La contraseña debe tener al menos 10 caracteres, una mayúscula y un número.', 'error');
+                return;
+            }
+            handleFormSubmit(form, 'showEditModal');
+        }
+    });
+});
+</script>
+{% endblock %}
+

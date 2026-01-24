@@ -8,9 +8,9 @@ Siguiendo arquitectura de views delgadas:
 """
 from django.views.generic import TemplateView
 from django.urls import reverse
+from django.contrib.auth.mixins import LoginRequiredMixin
 
-
-class DashboardView(TemplateView):
+class DashboardView(LoginRequiredMixin, TemplateView):
     """
     Vista principal del dashboard.
     
@@ -24,7 +24,7 @@ class DashboardView(TemplateView):
         
         # Menu items para el sidebar (Usando Service)
         from apps.core.services.menu_service import MenuService
-        context['menu_items'] = MenuService.get_menu_items(self.request.path)
+        context['menu_items'] = MenuService.get_menu_items(self.request.path, self.request.user)
         
         # Breadcrumbs
         context['breadcrumbs'] = [
