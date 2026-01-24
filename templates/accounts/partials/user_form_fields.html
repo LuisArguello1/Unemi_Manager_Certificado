@@ -1,0 +1,75 @@
+{% for field in form %}
+<div class="space-y-1 {% if field.name == 'username' or field.name == 'email' %} md:col-span-2 {% endif %}" 
+     {% if field.field.widget.input_type == 'password' %}
+     x-data="{ show: false, strength: '', strengthClass: 'bg-gray-200 text-gray-500' }"
+     {% endif %}>
+    
+    <label for="{{ field.id_for_label }}" class="block text-[11px] font-bold text-gray-700 uppercase flex justify-between items-center">
+        <span>{{ field.label }}</span>
+        {% if field.field.widget.input_type == 'password' %}
+        <span x-text="strength" :class="strengthClass" class="px-1.5 py-0.5 text-[9px] rounded-sm font-bold uppercase transition-all duration-300"></span>
+        {% endif %}
+    </label>
+
+    <div class="relative group">
+        {% if field.field.widget.input_type == 'password' %}
+            <input type="{% if field.field.widget.input_type == 'password' %}password{% else %}{{ field.field.widget.input_type }}{% endif %}"
+                   :type="show ? 'text' : 'password'"
+                   name="{{ field.name }}"
+                   id="{{ field.id_for_label }}"
+                   autocomplete="{% if field.name == 'password1' %}new-password{% else %}current-password{% endif %}"
+                   {% if field.value %}value="{{ field.value }}"{% endif %}
+                   class="{{ field.field.widget.attrs.class }} pr-10"
+                   @input="
+                        if ('{{ field.name }}' === 'password1') {
+                            const val = $el.value;
+                            if (val.length === 0) { strength = ''; }
+                            else if (val.length < 6) { strength = 'Debil'; strengthClass = 'bg-red-100 text-red-700'; }
+                            else if (val.length < 10 || !/[A-Z]/.test(val) || !/[0-9]/.test(val)) { strength = 'Medio'; strengthClass = 'bg-yellow-100 text-yellow-700'; }
+                            else { strength = 'Fuerte'; strengthClass = 'bg-green-100 text-green-700'; }
+                        }
+                   "
+                   {% if field.required %}required{% endif %}>
+            
+            <button type="button" 
+                    @click="show = !show" 
+                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                <i class="fas" :class="show ? 'fa-eye-slash' : 'fa-eye'"></i>
+            </button>
+        {% elif field.field.widget.input_type == 'checkbox' %}
+            <div class="flex items-center space-x-2">
+                <input type="checkbox"
+                       name="{{ field.name }}"
+                       id="{{ field.id_for_label }}"
+                       class="{{ field.field.widget.attrs.class }}"
+                       {% if field.value %}checked{% endif %}
+                       {% if field.required %}required{% endif %}>
+                <label for="{{ field.id_for_label }}" class="text-xs text-gray-600 cursor-pointer">
+                    {% if field.name == 'is_active' %}
+                        Marcar como activo
+                    {% elif field.name == 'is_staff' %}
+                        Acceso al panel administrativo
+                    {% else %}
+                        {{ field.label }}
+                    {% endif %}
+                </label>
+            </div>
+        {% else %}
+            <input type="{{ field.field.widget.input_type|default:'text' }}"
+                   name="{{ field.name }}"
+                   id="{{ field.id_for_label }}"
+                   {% if field.name == 'username' %}autocomplete="username"{% elif field.name == 'email' %}autocomplete="email"{% elif field.name == 'first_name' %}autocomplete="given-name"{% elif field.name == 'last_name' %}autocomplete="family-name"{% else %}autocomplete="on"{% endif %}
+                   {% if field.value %}value="{{ field.value }}"{% endif %}
+                   class="{{ field.field.widget.attrs.class }}"
+                   {% if field.required %}required{% endif %}>
+        {% endif %}
+    </div>
+
+    {% if field.errors %}
+    <div class="text-[10px] text-red-600 font-bold bg-red-50 p-1 border border-red-200 rounded-sm mt-1">
+        {{ field.errors.0 }}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+

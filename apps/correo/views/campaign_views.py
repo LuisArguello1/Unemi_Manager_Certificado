@@ -4,6 +4,7 @@ Views para gestionar campañas de correo masivo.
 from django.views.generic import CreateView, TemplateView, ListView, DetailView, View, UpdateView
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse, reverse_lazy
 from django.core.serializers.json import DjangoJSONEncoder
 import json
@@ -12,7 +13,7 @@ from ..models import EmailCampaign
 from ..services import EmailCampaignService
 from apps.curso.models import Curso
 
-class CreateCampaignView(CreateView):
+class CreateCampaignView(LoginRequiredMixin, CreateView):
     """
     Vista para crear una nueva campaña seleccionando un Curso.
     Reemplaza la antigua carga de Excel.
@@ -26,7 +27,7 @@ class CreateCampaignView(CreateView):
         # Menu items para el sidebar (Asumimos que existe MenuService)
         try:
             from apps.core.services.menu_service import MenuService
-            context['menu_items'] = MenuService.get_menu_items(self.request.path)
+            context['menu_items'] = MenuService.get_menu_items(self.request.path, self.request.user)
         except ImportError:
             context['menu_items'] = []
             
@@ -70,7 +71,7 @@ class CreateCampaignView(CreateView):
             return self.form_invalid(form)
 
 
-class EditCampaignView(UpdateView):
+class EditCampaignView(LoginRequiredMixin, UpdateView):
     """
     Vista para editar una campaña existente (si no ha sido enviada aun).
     """
@@ -82,7 +83,7 @@ class EditCampaignView(UpdateView):
         context = super().get_context_data(**kwargs)
         try:
             from apps.core.services.menu_service import MenuService
-            context['menu_items'] = MenuService.get_menu_items(self.request.path)
+            context['menu_items'] = MenuService.get_menu_items(self.request.path, self.request.user)
         except ImportError: pass
             
         context['breadcrumbs'] = [
@@ -113,7 +114,7 @@ class EditCampaignView(UpdateView):
         return redirect('correo:preview', pk=self.object.pk)
 
 
-class PreviewCampaignView(DetailView):
+class PreviewCampaignView(LoginRequiredMixin, DetailView):
     """
     Vista para previsualizar la campaña antes de enviar.
     Ahora carga desde DB (estado draft o processing), no desde sesión.
@@ -127,7 +128,7 @@ class PreviewCampaignView(DetailView):
         
         try:
             from apps.core.services.menu_service import MenuService
-            context['menu_items'] = MenuService.get_menu_items(self.request.path)
+            context['menu_items'] = MenuService.get_menu_items(self.request.path, self.request.user)
         except ImportError: pass
             
         context['breadcrumbs'] = [
@@ -149,7 +150,7 @@ class PreviewCampaignView(DetailView):
         return context
 
 
-class SendCampaignView(View):
+class SendCampaignView(LoginRequiredMixin, View):
     """
     Vista para confirmar y enviar la campaña.
     """
@@ -182,7 +183,7 @@ class SendCampaignView(View):
             return redirect('correo:list')
 
 
-class CampaignListView(ListView):
+class CampaignListView(LoginRequiredMixin, ListView):
     model = EmailCampaign
     template_name = 'correo/campaign_list.html'
     context_object_name = 'campaigns'
@@ -192,7 +193,7 @@ class CampaignListView(ListView):
         context = super().get_context_data(**kwargs)
         try:
             from apps.core.services.menu_service import MenuService
-            context['menu_items'] = MenuService.get_menu_items(self.request.path)
+            context['menu_items'] = MenuService.get_menu_items(self.request.path, self.request.user)
         except ImportError: pass
         
         context['breadcrumbs'] = [{'name': 'Correo'}]
@@ -200,7 +201,7 @@ class CampaignListView(ListView):
         return context
 
 
-class CampaignDetailView(DetailView):
+class CampaignDetailView(LoginRequiredMixin, DetailView):
     model = EmailCampaign
     template_name = 'correo/campaign_detail.html'
     context_object_name = 'campaign'
@@ -209,7 +210,7 @@ class CampaignDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         try:
             from apps.core.services.menu_service import MenuService
-            context['menu_items'] = MenuService.get_menu_items(self.request.path)
+            context['menu_items'] = MenuService.get_menu_items(self.request.path, self.request.user)
         except ImportError: pass
         
         context['breadcrumbs'] = [
@@ -227,7 +228,7 @@ class CampaignDetailView(DetailView):
         return context
 
 
-class RetrySendView(View):
+class RetrySendView(LoginRequiredMixin, View):
     def post(self, request, pk):
         try:
             campaign = get_object_or_404(EmailCampaign, pk=pk)

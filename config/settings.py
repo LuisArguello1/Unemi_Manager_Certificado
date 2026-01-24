@@ -71,6 +71,7 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Aplicaciones locales
 LOCAL_APPS = [
+    'apps.accounts',
     'apps.core',
     'apps.correo',
     'apps.curso',
@@ -157,12 +158,13 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Backends de autenticación
 # El orden importa: Django intentará cada backend en orden hasta que uno funcione
-# Backends de autenticación
-# El orden importa: Django intentará cada backend en orden hasta que uno funcione
 AUTHENTICATION_BACKENDS = [
-    # 'apps.accounts.backends.synology_backend.SynologyAuthBackend',  # Primero intenta Synology
     'django.contrib.auth.backends.ModelBackend',  # Fallback a DB local si falla
 ]
+
+LOGIN_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = 'core:dashboard'
+LOGOUT_REDIRECT_URL = 'accounts:login'
 
 
 # Internacionalización

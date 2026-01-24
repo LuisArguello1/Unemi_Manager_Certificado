@@ -7,11 +7,12 @@ class MenuService:
     """
     
     @staticmethod
-    def get_menu_items(current_path, user=None):
+    def get_menu_items(current_path, user):
         """
         Retorna la lista de items del menú filtrada por permisos.
         """
         
+
         try:
             dashboard_url = reverse('core:dashboard')
         except:
@@ -87,5 +88,23 @@ class MenuService:
             'url': plantilla_list_url,
             'active': 'plantillas' in current_path
         })
+        
+        # TODO: Add Curso links here
+
+        # Sección de Administración (Solo Staff/Superuser)
+        if user and (user.is_staff or user.is_superuser):
+            menu.append({'separator': True, 'label': 'ADMINISTRACIÓN'})
+            
+            try:
+                users_url = reverse('accounts:user_list')
+            except:
+                users_url = '#'
+
+            menu.append({
+                'name': 'Usuarios',
+                'icon': 'users-cog',
+                'url': users_url,
+                'active': current_path.startswith('/auth/users/')
+            })
         
         return menu
