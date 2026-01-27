@@ -76,6 +76,7 @@ LOCAL_APPS = [
     'apps.core',
     'apps.correo',
     'apps.curso',
+    'apps.certificado',
 ]
 
 # Apps solo para DEBUG, y no para produccion
@@ -211,6 +212,20 @@ else:
 
 MEDIA_URL = '/media/'
 
+LIBREOFFICE_PATH = r"C:\Program Files\LibreOffice\program\soffice.exe"
+
+# =============================================================================
+# CONFIGURACIÓN DE CERTIFICADOS
+# =============================================================================
+
+# Rutas de almacenamiento para certificados
+CERTIFICADO_STORAGE_PATH = os.path.join(MEDIA_ROOT, 'certificados')
+CERTIFICADO_TEMPLATES_PATH = os.path.join(MEDIA_ROOT, 'plantillas_certificado')
+
+# Crear directorios si no existen
+os.makedirs(CERTIFICADO_STORAGE_PATH, exist_ok=True)
+os.makedirs(CERTIFICADO_TEMPLATES_PATH, exist_ok=True)
+
 # Configuración de cache para archivos estáticos y media
 STATIC_FILE_MAX_AGE = 60 * 60 * 24 * 30  # 30 días en segundos
 MEDIA_FILE_MAX_AGE = 60 * 60 * 24 * 7    # 7 días en segundos
@@ -293,6 +308,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'apps.certificado': {
+            'handlers': ['console', 'file_error'],
+            'level': 'INFO',
+            'propagate': False,
+        },
         # Silenciar logs ruidosos de librerías gráficas
         'fontTools': {
             'handlers': ['console'],
@@ -336,6 +356,13 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutos máximo por tarea
+
+# Ruteo de tareas Celery a colas específicas
+CELERY_TASK_ROUTES = {
+    'apps.certificado.tasks.generate_and_send_certificate_task': {'queue': 'certificates'},
+    'apps.certificado.tasks.send_certificate_email_task': {'queue': 'emails'},
+    'apps.certificado.tasks.update_batch_progress_task': {'queue': 'default'},
+}
 
 # =============================================================================
 # CONFIGURACIÓN DE LÍMITES DE ENVÍO DE CORREOS

@@ -106,5 +106,32 @@ class MenuService:
                 'url': users_url,
                 'active': current_path.startswith('/auth/users/')
             })
+
+        # Sección de Certificados
+        menu.append({'separator': True, 'label': 'CERTIFICADOS'})
+        
+        try:
+            certificado_crear_url = reverse('certificado:crear')
+            certificado_lista_url = reverse('certificado:lista')
+        except:
+            certificado_crear_url = '#'
+            certificado_lista_url = '#'
+        
+        menu.append({
+            'name': 'Generar Certificados',
+            'icon': 'file-certificate',
+            'url': certificado_crear_url,
+            'active': current_path == certificado_crear_url
+        })
+        
+        menu.append({
+            'name': 'Historial Certificados',
+            'icon': 'list-alt',
+            'url': certificado_lista_url,
+            'active': (current_path.startswith('/certificados/') and 
+                      current_path != certificado_crear_url and
+                      'procesamiento' not in current_path)
+        })
+
         
         return menu

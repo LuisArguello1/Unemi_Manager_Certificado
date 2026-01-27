@@ -24,6 +24,7 @@ urlpatterns = [
     path('', include('apps.core.urls')),  # Core app (dashboard) at ROOT
     path('correo/', include('apps.correo.urls')),  # Correo app
     path('curso/', include('apps.curso.urls')),    # Curso app
+    path('certificados/', include('apps.certificado.urls')),  # Certificados app
     path('auth/', include('apps.accounts.urls')),  # Accounts app
 ]
 
