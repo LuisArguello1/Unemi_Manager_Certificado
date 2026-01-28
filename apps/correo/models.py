@@ -205,9 +205,18 @@ class EmailDailyLimit(models.Model):
         Incrementa el contador de correos enviados hoy.
         """
         today = date.today()
+        from django.db.models import F
+        
+        today = date.today()
+        # Usar get_or_create para asegurar existencia
         limit_record, created = cls.objects.get_or_create(date=today)
-        limit_record.count += 1
-        limit_record.save()
+        
+        # Actualización atómica para evitar race conditions
+        limit_record.count = F('count') + 1
+        limit_record.save(update_fields=['count'])
+        
+        # Recargar para obtener valor actualizado si se necesita
+        limit_record.refresh_from_db()
         return limit_record.count
     
     @classmethod
@@ -227,3 +236,38 @@ class EmailDailyLimit(models.Model):
         remaining = daily_limit - limit_record.count
         
         return max(0, remaining)
+
+    @classmethod
+    def puede_enviar_lote(cls, cantidad):
+        """
+        Verifica si se puede enviar un lote de emails.
+        
+        Args:
+            cantidad: Número de emails a enviar
+        
+        Returns:
+            tuple: (puede_enviar: bool, emails_restantes: int, mensaje: str)
+        """
+        restantes = cls.get_remaining_today()
+        
+        daily_limit = cls.get_limit()
+        
+        if cantidad > restantes:
+            mensaje = (
+                f"No se puede enviar el lote. Se requieren {cantidad} emails "
+                f"pero solo quedan {restantes} disponibles hoy (límite: {daily_limit}/día)."
+            )
+            return False, restantes, mensaje
+        
+        return True, restantes, f"Se pueden enviar {cantidad} emails. Restantes: {restantes - cantidad}"
+
+    @classmethod
+    def get_limit(cls):
+        from django.conf import settings
+        return getattr(settings, 'EMAIL_DAILY_LIMIT', 400)
+    
+    @classmethod
+    def get_usage(cls):
+        today = date.today()
+        limit_record, created = cls.objects.get_or_create(date=today)
+        return limit_record.count

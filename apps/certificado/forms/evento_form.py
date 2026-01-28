@@ -7,7 +7,7 @@ Hereda de CoreBaseForm para estilos Tailwind automáticos.
 from django import forms
 from django.core.exceptions import ValidationError
 from apps.core.forms.base_form import CoreBaseForm
-from ..models import Direccion, VariantePlantilla
+from ..models import Direccion, VariantePlantilla, Modalidad, Tipo, TipoEvento
 
 
 class EventoForm(CoreBaseForm):
@@ -16,25 +16,6 @@ class EventoForm(CoreBaseForm):
     Incluye todos los campos necesarios para reemplazar variables en certificados.
     """
     
-    # Choices
-    MODALIDAD_CHOICES = [
-        ('', '-- Seleccione modalidad --'),
-        ('virtual', 'Virtual'),
-        ('presencial', 'Presencial'),
-        ('hibrido', 'Híbrido'),
-    ]
-    
-    TIPO_CHOICES = [
-        ('', '-- Seleccione tipo --'),
-        ('curso', 'Curso'),
-        ('taller', 'Taller'),
-        ('seminario', 'Seminario'),
-        ('conferencia', 'Conferencia'),
-        ('capacitacion', 'Capacitación'),
-        ('diplomado', 'Diplomado'),
-        ('otro', 'Otro'),
-    ]
-    
     # Campos
     direccion_gestion = forms.ModelChoiceField(
         queryset=Direccion.objects.filter(activo=True),
@@ -42,25 +23,24 @@ class EventoForm(CoreBaseForm):
         label='Dirección/Gestión',
         widget=forms.Select(attrs={
             'id': 'id_direccion_gestion',
-            'hx-get': '/certificados/api/variantes/',
-            'hx-trigger': 'change',
-            'hx-target': '#variante-container',
+            'class': 'hidden', # Se controla vía Modal/JS
         })
     )
     
-    variante_plantilla = forms.ModelChoiceField(
-        queryset=VariantePlantilla.objects.none(),
+    plantilla_seleccionada = forms.ModelChoiceField(
+        queryset=VariantePlantilla.objects.all(), # Se filtra por JS
         required=False,
-        empty_label='-- Usar plantilla base --',
-        label='Variante de Plantilla (Opcional)',
-        help_text='Si no selecciona una variante, se usará la plantilla base de la dirección',
-        widget=forms.Select(attrs={'id': 'id_variante_plantilla'})
+        label='Plantilla',
+        widget=forms.HiddenInput(attrs={'id': 'id_plantilla_seleccionada'})
     )
     
-    modalidad = forms.ChoiceField(
-        choices=MODALIDAD_CHOICES,
+    modalidad = forms.ModelChoiceField(
+        queryset=Modalidad.objects.filter(activo=True),
+        empty_label='-- Seleccione modalidad --',
         label='Modalidad',
-        widget=forms.Select()
+        widget=forms.Select(attrs={
+            'class': 'w-full text-xs border-gray-300 rounded-sm focus:border-indigo-500 focus:ring-indigo-500'
+        })
     )
     
     nombre_evento = forms.CharField(
@@ -68,15 +48,15 @@ class EventoForm(CoreBaseForm):
         label='Nombre del Evento',
         widget=forms.TextInput(attrs={
             'placeholder': 'Ej: Taller de Python Avanzado',
+            'class': 'w-full text-xs border-gray-300 rounded-sm focus:border-indigo-500 focus:ring-indigo-500'
         })
     )
     
-    duracion_horas = forms.IntegerField(
-        min_value=1,
-        label='Duración (horas)',
-        widget=forms.NumberInput(attrs={
-            'placeholder': 'Ej: 40',
-            'min': '1',
+    duracion_horas = forms.CharField(
+        label='Duración',
+        widget=forms.TextInput(attrs={
+            'placeholder': 'Ej: 40 horas',
+            'class': 'w-full text-xs border-gray-300 rounded-sm focus:border-indigo-500 focus:ring-indigo-500'
         })
     )
     
@@ -84,6 +64,7 @@ class EventoForm(CoreBaseForm):
         label='Fecha de Inicio',
         widget=forms.DateInput(attrs={
             'type': 'date',
+            'class': 'w-full text-xs border-gray-300 rounded-sm focus:border-indigo-500 focus:ring-indigo-500'
         })
     )
     
@@ -91,20 +72,25 @@ class EventoForm(CoreBaseForm):
         label='Fecha de Fin',
         widget=forms.DateInput(attrs={
             'type': 'date',
+            'class': 'w-full text-xs border-gray-300 rounded-sm focus:border-indigo-500 focus:ring-indigo-500'
         })
     )
     
-    tipo = forms.ChoiceField(
-        choices=TIPO_CHOICES,
+    tipo = forms.ModelChoiceField(
+        queryset=Tipo.objects.filter(activo=True),
+        empty_label='-- Seleccione tipo --',
         label='Tipo',
-        widget=forms.Select()
+        widget=forms.Select(attrs={
+            'class': 'w-full text-xs border-gray-300 rounded-sm focus:border-indigo-500 focus:ring-indigo-500'
+        })
     )
     
-    tipo_evento = forms.CharField(
-        max_length=200,
-        label='Tipo de Evento (Descripción específica)',
-        widget=forms.TextInput(attrs={
-            'placeholder': 'Ej: Taller práctico de programación',
+    tipo_evento = forms.ModelChoiceField(
+        queryset=TipoEvento.objects.filter(activo=True),
+        empty_label='-- Seleccione tipo de evento --',
+        label='Tipo de Evento',
+        widget=forms.Select(attrs={
+            'class': 'w-full text-xs border-gray-300 rounded-sm focus:border-indigo-500 focus:ring-indigo-500'
         })
     )
     
@@ -112,23 +98,25 @@ class EventoForm(CoreBaseForm):
         label='Fecha de Emisión',
         widget=forms.DateInput(attrs={
             'type': 'date',
-        }),
-        help_text='Fecha en que se emiten los certificados'
+            'class': 'w-full text-xs border-gray-300 rounded-sm focus:border-indigo-500 focus:ring-indigo-500'
+        })
     )
     
     objetivo_programa = forms.CharField(
         label='Objetivo del Programa',
         widget=forms.Textarea(attrs={
-            'rows': 4,
-            'placeholder': 'Describa los objetivos del programa...',
+            'rows': 3,
+            'placeholder': 'Describa el objetivo principal...',
+            'class': 'w-full text-xs border-gray-300 rounded-sm focus:border-indigo-500 focus:ring-indigo-500'
         })
     )
     
     contenido_programa = forms.CharField(
         label='Contenido del Programa',
         widget=forms.Textarea(attrs={
-            'rows': 6,
-            'placeholder': 'Describa el contenido y temática del programa...',
+            'rows': 3,
+            'placeholder': 'Describa el contenido resumido...',
+            'class': 'w-full text-xs border-gray-300 rounded-sm focus:border-indigo-500 focus:ring-indigo-500'
         })
     )
     

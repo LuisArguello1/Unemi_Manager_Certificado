@@ -7,24 +7,32 @@ from django.utils import timezone
 from datetime import timedelta
 
 
+from django.conf import settings
+
 class DailyEmailLimit(models.Model):
     """
     Modelo para trackear el límite díario de emails enviados.
-    Límite: 400 emails por día.
+    Límite: Configurado en settings (EMAIL_DAILY_LIMIT).
     """
     fecha = models.DateField(unique=True, db_index=True)
     emails_enviados = models.IntegerField(default=0)
     ultimo_reset = models.DateTimeField(auto_now=True)
     
-    LIMITE_DIARIO = 400
+    @property
+    def LIMITE_DIARIO(self):
+        return getattr(settings, 'EMAIL_DAILY_LIMIT', 400)
     
+    @classmethod
+    def get_limit(cls):
+        return getattr(settings, 'EMAIL_DAILY_LIMIT', 400)
+
     class Meta:
         verbose_name = "Límite Diario de Emails"
         verbose_name_plural = "Límites Diarios de Emails"
         ordering = ['-fecha']
     
     def __str__(self):
-        return f"{self.fecha}: {self.emails_enviados}/{self.LIMITE_DIARIO}"
+        return f"{self.fecha}: {self.emails_enviados}/{self.get_limit()}"
     
     @classmethod
     def puede_enviar_email(cls):
@@ -39,7 +47,7 @@ class DailyEmailLimit(models.Model):
             defaults={'emails_enviados': 0}
         )
         
-        emails_restantes = cls.LIMITE_DIARIO - limite.emails_enviados
+        emails_restantes = cls.get_limit() - limite.emails_enviados
         puede_enviar = emails_restantes > 0
         
         return puede_enviar, emails_restantes
@@ -60,7 +68,7 @@ class DailyEmailLimit(models.Model):
         if cantidad > restantes:
             mensaje = (
                 f"No se puede enviar el lote. Se requieren {cantidad} emails "
-                f"pero solo quedan {restantes} disponibles hoy (límite: {cls.LIMITE_DIARIO}/día)."
+                f"pero solo quedan {restantes} disponibles hoy (límite: {cls.get_limit()}/día)."
             )
             return False, restantes, mensaje
         

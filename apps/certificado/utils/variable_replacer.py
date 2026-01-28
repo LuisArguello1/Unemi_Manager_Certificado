@@ -24,8 +24,8 @@ class VariableReplacer:
         {{FECHA_EMISION}}, {{OBJETIVO_PROGRAMA}}, {{CONTENIDO}}
     """
     
-    # Regex pattern para detectar variables
-    VARIABLE_PATTERN = re.compile(r'\{\{([A-Z_]+)\}\}')
+    # Regex pattern para detectar variables (incluyendo espacios)
+    VARIABLE_PATTERN = re.compile(r'\{\{([A-Z_ ]+)\}\}')
     
     @staticmethod
     def replace_in_document(doc_path: str, variables: Dict[str, str]) -> Document:

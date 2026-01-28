@@ -1,0 +1,135 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}{{ plantilla.nombre }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    
+    <!-- Header -->
+    <div class="mb-6 bg-white p-4 border border-gray-200 rounded-sm shadow-sm">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">{{ plantilla.nombre }}</h1>
+                <p class="text-sm text-gray-500 mt-1">
+                    <i class="fas fa-building mr-1"></i> {{ plantilla.direccion.nombre }} ({{ plantilla.direccion.codigo }})
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'certificado:plantilla_edit' plantilla.pk %}" 
+                   class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-sm shadow-sm text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors uppercase">
+                    <i class="fas fa-edit mr-1"></i> Editar
+                </a>
+                <a href="{% url 'certificado:plantilla_delete' plantilla.pk %}" 
+                   class="inline-flex items-center px-3 py-1.5 border border-transparent rounded-sm shadow-sm text-xs font-medium text-white bg-red-600 hover:bg-red-700 transition-colors uppercase">
+                    <i class="fas fa-trash mr-1"></i> Eliminar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información de la Plantilla Base -->
+    <div class="bg-white shadow-sm rounded-sm border border-gray-200 mb-6">
+        <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-sm font-bold text-gray-700 uppercase">
+                <i class="fas fa-info-circle mr-1"></i> Información de la Plantilla Base
+            </h2>
+        </div>
+        <div class="p-4">
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Estado</dt>
+                    <dd class="mt-1">
+                        {% if plantilla.es_activa %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                            <i class="fas fa-check-circle mr-1"></i> Activa
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
+                            <i class="fas fa-circle mr-1"></i> Inactiva
+                        </span>
+                        {% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Fecha de Creación</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ plantilla.created_at|date:"d/m/Y H:i" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Última Actualización</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ plantilla.updated_at|date:"d/m/Y H:i" }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs font-medium text-gray-500 uppercase">Archivo</dt>
+                    <dd class="mt-1">
+                        <a href="{{ plantilla.archivo.url }}" target="_blank" 
+                           class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-download mr-1"></i> Descargar plantilla base
+                        </a>
+                    </dd>
+                </div>
+            </dl>
+            {% if plantilla.descripcion %}
+            <div class="mt-4">
+                <dt class="text-xs font-medium text-gray-500 uppercase">Descripción</dt>
+                <dd class="mt-1 text-sm text-gray-700">{{ plantilla.descripcion }}</dd>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Variantes -->
+    <div class="bg-white shadow-sm rounded-sm border border-gray-200">
+        <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-sm font-bold text-gray-700 uppercase">
+                <i class="fas fa-layer-group mr-1"></i> Variantes ({{ variantes.count }})
+            </h2>
+        </div>
+        
+        {% if variantes %}
+        <div class="divide-y divide-gray-200">
+            {% for variante in variantes %}
+            <div class="p-4 hover:bg-gray-50 transition-colors">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h3 class="text-sm font-bold text-gray-900">{{ variante.nombre }}</h3>
+                        {% if variante.descripcion %}
+                        <p class="text-xs text-gray-500 mt-1">{{ variante.descripcion }}</p>
+                        {% endif %}
+                        <div class="mt-2 flex items-center gap-3 text-[10px] text-gray-400">
+                            <span><i class="fas fa-sort mr-1"></i> Orden: {{ variante.orden }}</span>
+                            <span><i class="far fa-calendar-alt mr-1"></i> {{ variante.created_at|date:"d/m/Y" }}</span>
+                            {% if variante.activo %}
+                            <span class="text-green-600 font-bold"><i class="fas fa-check-circle mr-1"></i> Activa</span>
+                            {% else %}
+                            <span class="text-gray-400"><i class="fas fa-ban mr-1"></i> Inactiva</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{{ variante.archivo.url }}" target="_blank" 
+                           class="inline-flex items-center px-2 py-1 text-xs border border-gray-300 rounded-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                            <i class="fas fa-download mr-1"></i> Descargar
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-6 text-center text-gray-500">
+            <i class="fas fa-layer-group text-3xl text-gray-200 mb-2"></i>
+            <p class="text-xs">No hay variantes para esta plantilla</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Botón de Regreso -->
+    <div class="mt-6">
+        <a href="{% url 'certificado:plantilla_list' %}" 
+           class="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+            <i class="fas fa-arrow-left mr-2"></i> Volver al listado
+        </a>
+    </div>
+</div>
+{% endblock %}

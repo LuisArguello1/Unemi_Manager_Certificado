@@ -1,0 +1,335 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %}{% if object %}Editar{% else %}Crear{% endif %} Plantilla{% endblock %}
+
+{% block content %}
+<div class="w-full">
+    <div class="bg-white shadow-xl shadow-blue-50/50 rounded-2xl border border-gray-200 overflow-hidden relative">
+        <!-- Decoration -->
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+
+        <form method="post" enctype="multipart/form-data" id="plantillaForm" class="p-8">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-md text-sm text-red-700">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <!-- Grid de 2 Columnas -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                
+                <!-- COLUMNA IZQUIERDA: Información Básica -->
+                <div class="space-y-4">
+                    <!-- Dirección con selector modal -->
+                   <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Dirección/Gestión *
+                        </label>
+                        <input type="hidden" id="id_direccion" name="direccion" value="{% if object.direccion %}{{ object.direccion.pk }}{% elif form.direccion.value %}{{ form.direccion.value }}{% endif %}">
+                        <button type="button" id="selectDireccionBtn" class="w-full flex items-center justify-between px-4 py-3 text-left border-2 border-gray-300 rounded-lg hover:border-indigo-400 hover:bg-gray-50 transition-all">
+                            <div id="selectedDireccionDisplay" class="flex items-center">
+                                {% if object.direccion %}
+                                <i class="fas fa-folder text-indigo-600 mr-3 text-xl"></i>
+                                <div>
+                                    <span class="block text-sm font-bold text-gray-900">{{ object.direccion.nombre }}</span>
+                                    <span class="text-xs text-gray-500">Código: {{ object.direccion.codigo }}</span>
+                                </div>
+                                {% else %}
+                                <i class="fas fa-folder text-gray-400 mr-3 text-xl"></i>
+                                <span class="text-sm text-gray-500">Seleccionar dirección...</span>
+                                {% endif %}
+                            </div>
+                            <i class="fas fa-chevron-down text-gray-400"></i>
+                        </button>
+                        {% if form.direccion.errors %}
+                        <p class="text-xs text-red-600 mt-1 font-bold">{{ form.direccion.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Nombre -->
+                    <div>
+                        <label for="{{ form.nombre.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-2">
+                            {{ form.nombre.label }} *
+                        </label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                        <p class="text-xs text-red-600 mt-1 font-bold">{{ form.nombre.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Descripción -->
+                    <div>
+                        <label for="{{ form.descripcion.id_for_label }}" class="block text-sm font-bold text-gray-700 mb-2">
+                            {{ form.descripcion.label }}
+                        </label>
+                        {{ form.descripcion }}
+                        {% if form.descripcion.errors %}
+                        <p class="text-xs text-red-600 mt-1 font-bold">{{ form.descripcion.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Es Activa -->
+                    <div class="flex items-center pt-2">
+                        {{ form.es_activa }}
+                        <label for="{{ form.es_activa.id_for_label }}" class="ml-2 block text-sm font-bold text-gray-700">
+                            {{ form.es_activa.label }}
+                        </label>
+                    </div>
+                    {% if form.es_activa.help_text %}
+                    <p class="text-xs text-gray-500 -mt-2 ml-6">{{ form.es_activa.help_text }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- COLUMNA DERECHA: Archivo -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">{{ form.archivo.label }} *</label>
+                    <div id="drop-zone-base" class="relative group border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-gray-50 hover:border-indigo-400 transition-all cursor-pointer bg-white h-full min-h-[300px]">
+                        
+                        <!-- Initial State -->
+                        <div id="upload-prompt-base" class="{% if object.archivo %}hidden{% endif %}">
+                            <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-file-word text-2xl"></i>
+                            </div>
+                            <p class="text-sm font-bold text-gray-700">Arrastra tu archivo .docx aquí</p>
+                            <p class="text-xs text-gray-500 mt-1">Máximo 10MB</p>
+                            <p class="text-xs text-indigo-600 mt-3 font-medium bg-indigo-50 px-3 py-1 rounded-full inline-block">Explorar archivos</p>
+                        </div>
+
+                        <!-- Preview State -->
+                        <div id="file-preview-base" class="{% if not object.archivo %}hidden{% endif %} w-full flex flex-col items-center">
+                            <div class="h-32 w-32 bg-blue-50 rounded-lg flex items-center justify-center mb-3">
+                                <i class="fas fa-file-word text-5xl text-blue-500"></i>
+                            </div>
+                            <span id="file-name-base" class="text-sm font-bold text-gray-800 break-all px-4">
+                                {% if object.archivo %}{{ object.archivo.name|slice:"-30:" }}{% endif %}
+                            </span>
+                            <p class="text-xs text-green-600 mt-1 font-bold"><i class="fas fa-check-circle mr-1"></i> Archivo seleccionado</p>
+                        </div>
+
+                        <!-- Actual Input -->
+                        {{ form.archivo }}
+                    </div>
+                    {% if form.archivo.errors %}
+                    <p class="text-xs text-red-600 mt-2 font-bold">{{ form.archivo.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Variantes Section -->
+            <div class="mt-8 pt-8 border-t border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="text- font-bold text-gray-800 flex items-center">
+                            <i class="fas fa-layer-group mr-2 text-indigo-600"></i> Variantes (Opcional)
+                        </h3>
+                        <p class="text-xs text-gray-500 mt-1">Versiones alternativas de la plantilla base</p>
+                    </div>
+                    <button type="button" id="add-variante" class="inline-flex items-center px-3 py-1.5 border border-transparent rounded-sm shadow-sm text-xs font-medium text-white bg-green-600 hover:bg-green-700 transition-colors uppercase">
+                        <i class="fas fa-plus mr-1"></i> Agregar Variante
+                    </button>
+                </div>
+
+                <div id="variantes-container" class="space-y-4">
+                    {{ variantes_formset.management_form }}
+                    
+                    {% for form_var in variantes_formset %}
+                    <div class="variante-form-item bg-gradient-to-r from-gray-50 to-blue-50/30 border border-gray-200 rounded-lg p-4 relative">
+                        <!-- Delete Button -->
+                        {% if form_var.instance.pk %}
+                        <div class="absolute top-2 right-2">
+                            {{ form_var.DELETE }}
+                            <label for="{{ form_var.DELETE.id_for_label }}" class="inline-flex items-center px-2 py-1 text-xs text-red-600 cursor-pointer hover:bg-red-50 rounded-sm transition-colors font-bold">
+                                <i class="fas fa-trash mr-1"></i> Eliminar
+                            </label>
+                        </div>
+                        {% endif %}
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <!-- Nombre -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Nombre *</label>
+                                {{ form_var.nombre }}
+                                {% if form_var.nombre.errors %}
+                                <p class="text-xs text-red-600 mt-1">{{ form_var.nombre.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Orden -->
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Orden</label>
+                                {{ form_var.orden }}
+                                {% if form_var.orden.errors %}
+                                <p class="text-xs text-red-600 mt-1">{{ form_var.orden.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Activo -->
+                            <div class="flex items-center pt-5">
+                                {{ form_var.activo }}
+                                <label for="{{ form_var.activo.id_for_label }}" class="ml-2 block text-xs text-gray-700 font-bold">
+                                    Activa
+                                </label>
+                            </div>
+
+                            <!-- Archivo -->
+                            <div class="md:col-span-3">
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Archivo .docx *</label>
+                                {{ form_var.archivo }}
+                                {% if form_var.archivo.errors %}
+                                <p class="text-xs text-red-600 mt-1">{{ form_var.archivo.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Descripción -->
+                            <div class="md:col-span-3">
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Descripción</label>
+                                {{ form_var.descripcion }}
+                                {% if form_var.descripcion.errors %}
+                                <p class="text-xs text-red-600 mt-1">{{ form_var.descripcion.errors.0 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {{ form_var.id }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="mt-10 pt-6 border-t border-gray-100 flex items-center justify-between">
+                <a href="{% url 'certificado:plantilla_list' %}"
+                    class="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-800 transition-colors">
+                    CANCELAR
+                </a>
+                <button type="submit" id="submitBtn"
+                    class="px-8 py-2.5 bg-indigo-600 border border-transparent rounded-lg shadow-lg shadow-indigo-200 text-sm font-bold text-white hover:bg-indigo-700 hover:scale-[1.02] active:scale-95 focus:outline-none transition-all flex items-center">
+                    <i class="fas fa-save mr-2"></i>
+                    <span id="btnText">{% if object %}ACTUALIZAR{% else %}CREAR PLANTILLA{% endif %}</span>
+                    <span id="spinner" class="hidden ml-2">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Selector de Direcciones -->
+<div id="direccionModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+        <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900">Seleccionar Dirección/Gestión</h2>
+                <p class="text-sm text-gray-500 mt-1">Elige la dirección asociada a esta plantilla</p>
+            </div>
+            <button type="button" id="closeDireccionModal" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto max-h-[60vh]" id="direccionesGrid">
+            <!-- Las direcciones se cargarán aquí dinámicamente -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/certificado/plantilla_form.js' %}"></script>
+<script>
+// Cargar direcciones para el modal
+document.addEventListener('DOMContentLoaded', function() {
+    const selectBtn = document.getElementById('selectDireccionBtn');
+    const modal = document.getElementById('direccionModal');
+    const closeBtn = document.getElementById('closeDireccionModal');
+    const direccionesGrid = document.getElementById('direccionesGrid');
+    const hiddenInput = document.getElementById('id_direccion');
+    const displayDiv = document.getElementById('selectedDireccionDisplay');
+
+    // Abrir modal
+    selectBtn.addEventListener('click', function() {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        cargarDirecciones();
+    });
+
+    // Cerrar modal
+    closeBtn.addEventListener('click', function() {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    });
+
+    // Cerrar al hacer click fuera
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    });
+
+    // Cargar direcciones
+    function cargarDirecciones() {
+        // Por ahora usar valores del template, luego podemos hacer AJAX
+        const direcciones = [
+            {% for dir in form.direccion.field.queryset %}
+            {
+                id: {{ dir.pk }},
+                nombre: "{{ dir.nombre|escapejs }}",
+                codigo: "{{ dir.codigo|escapejs }}",
+                activo: {{ dir.activo|lower }}
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        direccionesGrid.innerHTML = `
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${direcciones.map(dir => `
+                    <button type="button" class="direccion-card text-left p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition-all ${!dir.activo ? 'opacity-50' : ''}" data-id="${dir.id}" data-nombre="${dir.nombre}" data-codigo="${dir.codigo}">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                                <i class="fas fa-folder text-indigo-600 text-xl"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-bold text-gray-900 truncate">${dir.nombre}</h3>
+                                <p class="text-xs text-gray-500 mt-0.5">Código: ${dir.codigo}</p>
+                                ${!dir.activo ? '<span class="inline-block mt-1 text-[9px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">INACTIVA</span>' : '<span class="inline-block mt-1 text-[9px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">ACTIVA</span>'}
+                            </div>
+                        </div>
+                    </button>
+                `).join('')}
+            </div>
+        `;
+
+        // Event listeners para cada card
+        document.querySelectorAll('.direccion-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const nombre = this.dataset.nombre;
+                const codigo = this.dataset.codigo;
+
+                // Actualizar input hidden
+                hiddenInput.value = id;
+
+                // Actualizar display
+                displayDiv.innerHTML = `
+                    <i class="fas fa-folder text-indigo-600 mr-3 text-xl"></i>
+                    <div>
+                        <span class="block text-sm font-bold text-gray-900">${nombre}</span>
+                        <span class="text-xs text-gray-500">Código: ${codigo}</span>
+                    </div>
+                `;
+
+                // Cerrar modal
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -44,55 +44,19 @@ class ExcelUploadForm(CoreBaseForm):
                 f'Tamaño máximo: 5MB.'
             )
         
-        # Validar que se puede abrir con openpyxl
+        # Validar que se puede abrir y tiene estructura correcta usando el parser unificado
         try:
-            wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
-            ws = wb.active
+            from ..utils import parse_excel_estudiantes, ExcelParseError
             
-            # Validar que tiene datos
-            if ws.max_row < 2:  # Header + al menos 1 estudiante
-                raise ValidationError(
-                    'El archivo Excel está vacío o solo contiene encabezados. '
-                    'Debe incluir al menos un estudiante.'
-                )
+            # El parser leerá el archivo, validará headers y datos
+            # Nota: Esto lee todo el archivo en memoria, pero está limitado por el tamaño maximo
+            parse_excel_estudiantes(archivo)
             
-            # Leer headers
-            headers = []
-            for cell in ws[1]:
-                if cell.value:
-                    headers.append(str(cell.value).strip().upper())
-            
-            # Validar headers requeridos
-            required_headers = ['NOMBRES COMPLETOS', 'CORREO ELECTRONICO']
-            missing_headers = []
-            
-            for required in required_headers:
-                if required not in headers:
-                    # Intentar match flexible (sin acentos, espacios)
-                    flexible_headers = [h.replace('Ó', 'O').replace('É', 'E') for h in headers]
-                    flexible_required = required.replace('Ó', 'O').replace('É', 'E')
-                    
-                    if flexible_required not in flexible_headers:
-                        missing_headers.append(required)
-            
-            if missing_headers:
-                raise ValidationError(
-                    f'Faltan columnas requeridas: {", ".join(missing_headers)}. '
-                    f'Columnas encontradas: {", ".join(headers)}. '
-                    f'Asegúrese de que las columnas se llamen exactamente: '
-                    f'"NOMBRES COMPLETOS" y "CORREO ELECTRONICO".'
-                )
-            
-            wb.close()
-            
-            # Reiniciar el puntero del archivo para uso posterior
+            # Reiniciar puntero
             archivo.seek(0)
             
-        except openpyxl.utils.exceptions.InvalidFileException:
-            raise ValidationError(
-                'El archivo no es un Excel válido. '
-                'Asegúrese de subir un archivo .xlsx o .xls.'
-            )
+        except ExcelParseError as e:
+            raise ValidationError(str(e))
         except Exception as e:
             raise ValidationError(
                 f'Error al procesar el archivo Excel: {str(e)}'
