@@ -15,29 +15,11 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def generate_and_send_certificate_task(self, certificado_id: int):
+@shared_task(bind=True, max_retries=3, default_retry_delay=60, name='apps.certificado.tasks.generate_certificate_task')
+def generate_certificate_task(self, certificado_id: int):
     """
-    Tarea principal: Genera DOCX, convierte a PDF y encola envío de email.
-    
-    Args:
-        certificado_id: ID del certificado a generar
-    
-    Flujo:
-        1. Cambiar estado a 'generating'
-        2. Cargar datos de BD
-        3. Obtener plantilla
-        4. Construir variables
-        5. Generar DOCX
-        6. Convertir a PDF
-        7. Guardar archivos
-        8. Actualizar estado a 'completed'
-        9. Encolar tarea de envío de email
-    
-    Retry:
-        - Max 3 intentos
-        - Delay: 60s, 120s, 300s (exponencial)
-        - Solo en errores recuperables
+    Tarea: Genera DOCX y convierte a PDF.
+    NO envía email automáticamente.
     """
     from .models import Certificado
     from .services import TemplateService, PDFConversionService, CertificateStorageService
@@ -59,7 +41,6 @@ def generate_and_send_certificate_task(self, certificado_id: int):
         
         # Obtener plantilla
         template_path = get_template_path(certificado.evento)
-        logger.info(f"[Certificado {certificado_id}] Plantilla seleccionada: {template_path}")
         
         # Construir variables
         variables = TemplateService.get_variables_from_evento_estudiante(
@@ -67,39 +48,31 @@ def generate_and_send_certificate_task(self, certificado_id: int):
             certificado.estudiante
         )
         
-        # Generar paths temporales
+        # Generar DOCX temporal (necesario para conversión a PDF)
         temp_docx = CertificateStorageService.get_temp_path(
             f'cert_{certificado_id}_{certificado.estudiante.id}.docx'
         )
         
-        # Generar DOCX
-        logger.info(f"[Certificado {certificado_id}] Generando DOCX...")
+        # Generar DOCX temporal
         TemplateService.generate_docx(template_path, variables, temp_docx)
         
-        # Convertir a PDF
-        logger.info(f"[Certificado {certificado_id}] Convirtiendo a PDF...")
+        # Convertir directamente a PDF
         temp_pdf = PDFConversionService.convert_docx_to_pdf(temp_docx)
         
-        # Guardar archivos en ubicación final
-        logger.info(f"[Certificado {certificado_id}] Guardando archivos...")
-        docx_path, pdf_path = CertificateStorageService.save_certificate_files(
+        # Guardar SOLO el PDF en ubicación final
+        pdf_path = CertificateStorageService.save_pdf_only(
             evento_id=certificado.evento.id,
             estudiante_id=certificado.estudiante.id,
-            docx_source_path=temp_docx,
             pdf_source_path=temp_pdf
         )
         
-        # Actualizar certificado con rutas de archivos
-        certificado.archivo_docx = docx_path
+        # Actualizar certificado con ruta del PDF
         certificado.archivo_pdf = pdf_path
         certificado.estado = 'completed'
         certificado.error_mensaje = ''
         certificado.save()
         
         logger.info(f"[Certificado {certificado_id}] Generación completada exitosamente")
-        
-        # Encolar tarea de envío de email
-        send_certificate_email_task.delay(certificado_id)
         
         # Actualizar progreso del lote
         update_batch_progress_task.delay(certificado.evento.id)
@@ -111,7 +84,7 @@ def generate_and_send_certificate_task(self, certificado_id: int):
             if os.path.exists(temp_pdf):
                 os.remove(temp_pdf)
         except:
-            pass  # No es crítico
+            pass
         
         return {
             'status': 'success',
@@ -121,29 +94,19 @@ def generate_and_send_certificate_task(self, certificado_id: int):
         
     except Exception as exc:
         logger.error(f"[Certificado {certificado_id}] Error: {str(exc)}", exc_info=True)
-        
-        # Actualizar certificado como fallido
         if certificado:
             certificado.estado = 'failed'
             certificado.error_mensaje = f"Error en generación: {str(exc)}"
             certificado.save()
-            
-            # Actualizar progreso del lote
             update_batch_progress_task.delay(certificado.evento.id)
         
-        # Retry en errores recuperables
         if 'timeout' in str(exc).lower() or 'temporary' in str(exc).lower():
             raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
         
-        # No retry en otros errores
-        return {
-            'status': 'error',
-            'certificado_id': certificado_id,
-            'error': str(exc)
-        }
+        return {'status': 'error', 'certificado_id': certificado_id, 'error': str(exc)}
 
 
-@shared_task(bind=True, max_retries=5, rate_limit='30/m')
+@shared_task(bind=True, max_retries=5, rate_limit='30/m', name='apps.certificado.tasks.send_certificate_email_task')
 def send_certificate_email_task(self, certificado_id: int):
     """
     Tarea de envío de email con certificado PDF adjunto.
@@ -188,7 +151,7 @@ Adjunto encontrará su certificado del evento:
 
 Fecha: {certificado.evento.fecha_inicio.strftime('%d/%m/%Y')} - {certificado.evento.fecha_fin.strftime('%d/%m/%Y')}
 Duración: {certificado.evento.duracion_horas} horas
-Modalidad: {certificado.evento.get_modalidad_display()}
+Modalidad: {certificado.evento.modalidad.nombre}
 
 Saludos cordiales,
 {certificado.evento.direccion.nombre}
@@ -218,8 +181,9 @@ Saludos cordiales,
         email.send(fail_silently=False)
         
         # Incrementar contador diario de emails
-        from .models import DailyEmailLimit
-        DailyEmailLimit.incrementar_contador(1)
+        # Incrementar contador diario de emails
+        from apps.correo.models import EmailDailyLimit
+        EmailDailyLimit.increment_count()
         
         # Actualizar certificado
         certificado.estado = 'sent'
@@ -265,7 +229,7 @@ Saludos cordiales,
             }
 
 
-@shared_task
+@shared_task(name='apps.certificado.tasks.update_batch_progress_task')
 def update_batch_progress_task(evento_id: int):
     """
     Actualiza el progreso del procesamiento en lote.

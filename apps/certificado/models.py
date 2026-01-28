@@ -74,7 +74,6 @@ def certificado_pdf_path(instance, filename):
     estudiante_id = instance.estudiante.id
     return f'certificados/{evento_id}/{estudiante_id}/certificado.pdf'
 
-
 # =============================================================================
 # MODELOS
 # =============================================================================
@@ -125,6 +124,139 @@ class Direccion(models.Model):
 
     def __str__(self):
         return f"{self.codigo} - {self.nombre}"
+
+
+class Modalidad(models.Model):
+    """
+    Catálogo de modalidades para eventos.
+    
+    Ejemplos:
+        - Virtual
+        - Presencial
+        - Híbrido
+    """
+    nombre = models.CharField(
+        max_length=100,
+        verbose_name='Nombre de la Modalidad',
+        unique=True
+    )
+    codigo = models.CharField(
+        max_length=20,
+        verbose_name='Código',
+        unique=True,
+        help_text='Código corto (ej: VIR, PRE, HIB)'
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name='Activo',
+        help_text='Solo las modalidades activas aparecen en formularios'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de creación'
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Última actualización'
+    )
+
+    class Meta:
+        verbose_name = 'Modalidad'
+        verbose_name_plural = 'Modalidades'
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
+class Tipo(models.Model):
+    """
+    Catálogo de tipos de eventos.
+    
+    Ejemplos:
+        - Curso
+        - Taller
+        - Seminario
+        - Conferencia
+        - Capacitación
+        - Diplomado
+    """
+    nombre = models.CharField(
+        max_length=100,
+        verbose_name='Nombre del Tipo',
+        unique=True
+    )
+    codigo = models.CharField(
+        max_length=20,
+        verbose_name='Código',
+        unique=True,
+        help_text='Código corto (ej: CUR, TAL, SEM)'
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name='Activo',
+        help_text='Solo los tipos activos aparecen en formularios'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de creación'
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Última actualización'
+    )
+
+    class Meta:
+        verbose_name = 'Tipo'
+        verbose_name_plural = 'Tipos'
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
+
+
+class TipoEvento(models.Model):
+    """
+    Catálogo de tipos específicos de eventos.
+    Descripción más detallada del evento.
+    
+    Ejemplos:
+        - "Curso de Capacitación en Gestión Administrativa"
+        - "Taller de Liderazgo Empresarial"
+        - "Seminario Internacional de Innovación"
+    """
+    nombre = models.CharField(
+        max_length=200,
+        verbose_name='Descripción del Tipo de Evento',
+        unique=True
+    )
+    codigo = models.CharField(
+        max_length=20,
+        verbose_name='Código',
+        unique=True,
+        help_text='Código corto'
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name='Activo',
+        help_text='Solo los tipos activos aparecen en formularios'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de creación'
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Última actualización'
+    )
+
+    class Meta:
+        verbose_name = 'Tipo de Evento'
+        verbose_name_plural = 'Tipos de Evento'
+        ordering = ['nombre']
+
+    def __str__(self):
+        return self.nombre
 
 
 class PlantillaBase(models.Model):
@@ -279,23 +411,6 @@ class Evento(models.Model):
     universales en las plantillas de certificado.
     """
     
-    # Choices
-    MODALIDAD_CHOICES = [
-        ('virtual', 'Virtual'),
-        ('presencial', 'Presencial'),
-        ('hibrido', 'Híbrido'),
-    ]
-    
-    TIPO_CHOICES = [
-        ('curso', 'Curso'),
-        ('taller', 'Taller'),
-        ('seminario', 'Seminario'),
-        ('conferencia', 'Conferencia'),
-        ('capacitacion', 'Capacitación'),
-        ('diplomado', 'Diplomado'),
-        ('otro', 'Otro'),
-    ]
-    
     # Relaciones
     direccion = models.ForeignKey(
         Direccion,
@@ -319,19 +434,21 @@ class Evento(models.Model):
         verbose_name='Creado por'
     )
     
-    # Campos del formulario
-    modalidad = models.CharField(
-        max_length=20,
-        choices=MODALIDAD_CHOICES,
+    # Campos del formulario (actualizados a ForeignKey)
+    modalidad = models.ForeignKey(
+        Modalidad,
+        on_delete=models.PROTECT,
+        related_name='eventos',
         verbose_name='Modalidad'
     )
     nombre_evento = models.CharField(
         max_length=300,
         verbose_name='Nombre del Evento'
     )
-    duracion_horas = models.PositiveIntegerField(
-        validators=[MinValueValidator(1)],
-        verbose_name='Duración (horas)'
+    duracion_horas = models.CharField(
+        max_length=100,
+        verbose_name='Duración',
+        help_text='Ej: 40 horas, 3 días'
     )
     fecha_inicio = models.DateField(
         verbose_name='Fecha de Inicio'
@@ -339,13 +456,16 @@ class Evento(models.Model):
     fecha_fin = models.DateField(
         verbose_name='Fecha de Fin'
     )
-    tipo = models.CharField(
-        max_length=20,
-        choices=TIPO_CHOICES,
+    tipo = models.ForeignKey(
+        Tipo,
+        on_delete=models.PROTECT,
+        related_name='eventos',
         verbose_name='Tipo'
     )
-    tipo_evento = models.CharField(
-        max_length=200,
+    tipo_evento = models.ForeignKey(
+        TipoEvento,
+        on_delete=models.PROTECT,
+        related_name='eventos',
         verbose_name='Tipo de Evento',
         help_text='Descripción específica del tipo de evento'
     )

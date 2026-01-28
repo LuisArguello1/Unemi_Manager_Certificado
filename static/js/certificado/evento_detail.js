@@ -1,0 +1,400 @@
+/**
+ * JavaScript para la vista de detalle de evento de certificados
+ * Maneja la generación, edición, eliminación y envío de certificados
+ */
+
+// Variables globales (csrftoken se define en el template)
+let pollInterval = null;
+
+// Estado para modales Alpine
+const modalState = {
+    editModal: {
+        isOpen: false,
+        estudianteId: null,
+        nombre: '',
+        correo: ''
+    },
+    deleteModal: {
+        isOpen: false,
+        estudianteId: null,
+        nombre: ''
+    }
+};
+
+/**
+ * Muestra un toast de notificación
+ * @param {string} msg - Mensaje a mostrar
+ */
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toastMsg');
+    if (toast && toastMsg) {
+        toastMsg.textContent = msg;
+        toast.classList.remove('translate-y-32', 'opacity-0');
+        setTimeout(() => toast.classList.add('translate-y-32', 'opacity-0'), 4000);
+    }
+}
+
+/**
+ * Abre el modal de edición de estudiante
+ * @param {number} estId - ID del estudiante
+ * @param {string} nombre - Nombre completo actual
+ * @param {string} correo - Correo electrónico actual
+ */
+function openEditModal(estId, nombre, correo) {
+    modalState.editModal.isOpen = true;
+    modalState.editModal.estudianteId = estId;
+    modalState.editModal.nombre = nombre;
+    modalState.editModal.correo = correo;
+
+    // Actualizar campos del formulario
+    const nombreInput = document.getElementById('editNombre');
+    const correoInput = document.getElementById('editCorreo');
+    if (nombreInput) nombreInput.value = nombre;
+    if (correoInput) correoInput.value = correo;
+
+    // Mostrar modal
+    const modal = document.getElementById('editModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+/**
+ * Cierra el modal de edición
+ */
+function closeEditModal() {
+    modalState.editModal.isOpen = false;
+    const modal = document.getElementById('editModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+/**
+ * Guarda los cambios del modal de edición
+ */
+function saveEditModal() {
+    const nombreInput = document.getElementById('editNombre');
+    const correoInput = document.getElementById('editCorreo');
+
+    if (!nombreInput || !correoInput) return;
+
+    const nombre = nombreInput.value.trim();
+    const correo = correoInput.value.trim();
+
+    // Validación básica
+    if (!nombre || !correo) {
+        showToast("TODOS LOS CAMPOS SON REQUERIDOS");
+        return;
+    }
+
+    // Validación de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(correo)) {
+        showToast("FORMATO DE CORREO INVÁLIDO");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'update_student');
+    formData.append('estudiante_id', modalState.editModal.estudianteId);
+    formData.append('nombre', nombre);
+    formData.append('correo', correo);
+    formData.append('csrfmiddlewaretoken', csrftoken);
+
+    fetch('', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message.toUpperCase());
+                closeEditModal();
+                // Actualizar la UI
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                showToast(data.error.toUpperCase());
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast("ERROR AL GUARDAR CAMBIOS");
+        });
+}
+
+/**
+ * Abre el modal de confirmación de eliminación
+ * @param {number} estId - ID del estudiante
+ * @param {string} nombre - Nombre completo del estudiante
+ */
+function openDeleteModal(estId, nombre) {
+    modalState.deleteModal.isOpen = true;
+    modalState.deleteModal.estudianteId = estId;
+    modalState.deleteModal.nombre = nombre;
+
+    // Actualizar mensaje
+    const deleteMsg = document.getElementById('deleteStudentName');
+    if (deleteMsg) deleteMsg.textContent = nombre;
+
+    // Mostrar modal
+    const modal = document.getElementById('deleteModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+/**
+ * Cierra el modal de eliminación
+ */
+function closeDeleteModal() {
+    modalState.deleteModal.isOpen = false;
+    const modal = document.getElementById('deleteModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+/**
+ * Confirma y ejecuta la eliminación del estudiante
+ */
+function confirmDeleteModal() {
+    const formData = new FormData();
+    formData.append('action', 'delete_student');
+    formData.append('estudiante_id', modalState.deleteModal.estudianteId);
+    formData.append('csrfmiddlewaretoken', csrftoken);
+
+    fetch('', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast("ESTUDIANTE ELIMINADO");
+                closeDeleteModal();
+
+                // Animar y eliminar fila
+                const row = document.getElementById(`row-${modalState.deleteModal.estudianteId}`);
+                if (row) {
+                    row.classList.add('opacity-0', 'scale-95', 'transition-all', 'duration-300');
+                    setTimeout(() => row.remove(), 300);
+                }
+            } else {
+                showToast(data.error.toUpperCase());
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast("ERROR AL ELIMINAR ESTUDIANTE");
+        });
+}
+
+/**
+ * Genera un certificado individual
+ * @param {number} estId - ID del estudiante
+ */
+function generateIndividual(estId) {
+    // Mostrar loading overlay
+    if (window.loadingOverlay) {
+        window.loadingOverlay.show('Generando certificado individual...');
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'generate_individual');
+    formData.append('estudiante_id', estId);
+    formData.append('csrfmiddlewaretoken', csrftoken);
+
+    showToast("INICIANDO GENERACIÓN INDIVIDUAL...");
+
+    fetch('', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast("PROCESANDO CERTIFICADO");
+                if (window.loadingOverlay) {
+                    window.loadingOverlay.updateMessage('Certificado en proceso. Espere por favor...');
+                }
+                startPolling();
+            } else {
+                showToast(data.error.toUpperCase());
+                if (window.loadingOverlay) {
+                    window.loadingOverlay.hide();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast("ERROR AL INICIAR GENERACIÓN");
+            if (window.loadingOverlay) {
+                window.loadingOverlay.hide();
+            }
+        });
+}
+
+/**
+ * Inicia la generación masiva de certificados
+ */
+function startGeneration() {
+    const btn = document.getElementById('btnGenerate');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50');
+        const icon = btn.querySelector('i');
+        if (icon) icon.classList.add('fa-spin');
+    }
+
+    // Mostrar loading overlay
+    if (window.loadingOverlay) {
+        window.loadingOverlay.show('Iniciando generación masiva de certificados...');
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'start_generation');
+    formData.append('csrfmiddlewaretoken', csrftoken);
+
+    fetch('', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast("GENERACIÓN POR LOTES INICIADA");
+
+                if (window.loadingOverlay) {
+                    window.loadingOverlay.updateMessage('Procesando certificados. Por favor NO cierre ni recargue esta página...');
+                }
+
+                startPolling();
+            } else {
+                showToast(data.error.toUpperCase());
+                if (btn) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50');
+                    const icon = btn.querySelector('i');
+                    if (icon) icon.classList.remove('fa-spin');
+                }
+                if (window.loadingOverlay) {
+                    window.loadingOverlay.hide();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast("ERROR AL INICIAR GENERACIÓN");
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+            }
+            if (window.loadingOverlay) {
+                window.loadingOverlay.hide();
+            }
+        });
+}
+
+/**
+ * Inicia el polling para monitorear el progreso
+ */
+function startPolling() {
+    if (pollInterval) clearInterval(pollInterval);
+
+    pollInterval = setInterval(() => {
+        const formData = new FormData();
+        formData.append('action', 'get_progress');
+        formData.append('csrfmiddlewaretoken', csrftoken);
+
+        fetch('', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const progress = data.progress || 0;
+
+                    // Actualizar barra de progreso en la página
+                    const progressBar = document.getElementById('progressBar');
+                    const progressPercent = document.getElementById('progressPercent');
+                    const countSuccess = document.getElementById('countSuccess');
+                    const countFailed = document.getElementById('countFailed');
+
+                    if (progressBar) progressBar.style.width = progress + '%';
+                    if (progressPercent) progressPercent.textContent = progress + '%';
+                    if (countSuccess) countSuccess.textContent = data.exitosos;
+                    if (countFailed) countFailed.textContent = data.fallidos;
+
+                    // Actualizar loading overlay si está activo o activarlo si es necesario
+                    if (window.loadingOverlay) {
+                        // Si el overlay está oculto pero estamos procesando, mostrarlo (caso recarga de página)
+                        if (window.loadingOverlay.overlay && window.loadingOverlay.overlay.classList.contains('hidden')) {
+                            window.loadingOverlay.show('Retomando generación...');
+                        }
+
+                        window.loadingOverlay.updateProgress(
+                            progress,
+                            data.exitosos || 0,
+                            data.fallidos || 0
+                        );
+
+                        if (progress > 0) {
+                            window.loadingOverlay.updateMessage(
+                                `Procesando certificados... ${progress}% completado`
+                            );
+                        }
+                    }
+
+                    // Si completó, detener polling y recargar
+                    if (data.is_complete) {
+                        clearInterval(pollInterval);
+                        showToast("PROCESAMIENTO FINALIZADO");
+
+                        if (window.loadingOverlay) {
+                            window.loadingOverlay.updateMessage('¡Procesamiento completado! Recargando...');
+                            setTimeout(() => {
+                                window.loadingOverlay.hide();
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            setTimeout(() => window.location.reload(), 2000);
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error en polling:', error);
+            });
+    }, 3000);
+}
+
+/**
+ * Abre el modal de confirmación de envío masivo
+ */
+function openSendModal() {
+    const modal = document.getElementById('sendModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+/**
+ * Cierra el modal de envío masivo
+ */
+function closeSendModal() {
+    const modal = document.getElementById('sendModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+/**
+ * Confirma y ejecuta el envío masivo de certificados
+ */
+function confirmSend() {
+    closeSendModal();
+
+    const formData = new FormData();
+    formData.append('action', 'start_sending');
+    formData.append('csrfmiddlewaretoken', csrftoken);
+
+    fetch('', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast(data.message.toUpperCase());
+                startPolling();
+            } else {
+                showToast(data.error.toUpperCase());
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast("ERROR AL INICIAR ENVÍO");
+        });
+}
+
+// Inicialización al cargar la página
+document.addEventListener('DOMContentLoaded', function () {
+    // Si hay un lote en proceso, iniciar polling automáticamente
+    const progressSection = document.getElementById('progressSection');
+    if (progressSection && !progressSection.classList.contains('hidden')) {
+        startPolling();
+    }
+});

@@ -66,17 +66,6 @@ class CertificateStorageService:
         
         Returns:
             Tupla (docx_relative_path, pdf_relative_path) para guardar en base de datos
-        
-        Ejemplo:
-            >>> from apps.certificado.services.storage_service import CertificateStorageService
-            >>> docx_rel, pdf_rel = CertificateStorageService.save_certificate_files(
-            ...     evento_id=1,
-            ...     estudiante_id=5,
-            ...     docx_source_path='/tmp/cert.docx',
-            ...     pdf_source_path='/tmp/cert.pdf'
-            ... )
-            >>> print(docx_rel)  # certificados/1/5/certificado.docx
-            >>> print(pdf_rel)   # certificados/1/5/certificado.pdf
         """
         try:
             # Obtener directorio destino
@@ -111,6 +100,47 @@ class CertificateStorageService:
             
         except Exception as e:
             logger.error(f"Error al guardar archivos de certificado: {str(e)}")
+            raise
+
+    @staticmethod
+    def save_pdf_only(evento_id: int, estudiante_id: int, pdf_source_path: str) -> str:
+        """
+        Guarda solo el archivo PDF en la estructura correcta.
+        
+        Args:
+            evento_id: ID del evento
+            estudiante_id: ID del estudiante
+            pdf_source_path: Ruta temporal del PDF generado
+        
+        Returns:
+            Ruta relativa del PDF para guardar en base de datos
+        """
+        try:
+            # Obtener directorio destino
+            dest_dir = CertificateStorageService.get_certificate_directory(evento_id, estudiante_id)
+            CertificateStorageService.ensure_directory_exists(dest_dir)
+            
+            # Ruta de destino
+            pdf_dest = os.path.join(dest_dir, 'certificado.pdf')
+            
+            # Copiar archivo
+            if os.path.exists(pdf_source_path):
+                shutil.copy2(pdf_source_path, pdf_dest)
+                logger.info(f"PDF copiado a: {pdf_dest}")
+            else:
+                logger.warning(f"PDF source no encontrado: {pdf_source_path}")
+                raise FileNotFoundError(f"PDF source no encontrado: {pdf_source_path}")
+            
+            # Convertir a ruta relativa para la base de datos
+            media_root = settings.MEDIA_ROOT
+            pdf_relative = os.path.relpath(pdf_dest, media_root).replace('\\', '/')
+            
+            logger.info(f"Archivo guardado - PDF: {pdf_relative}")
+            
+            return pdf_relative
+            
+        except Exception as e:
+            logger.error(f"Error al guardar PDF: {str(e)}")
             raise
     
     @staticmethod

@@ -118,19 +118,30 @@ class TemplateService:
         fecha_emision_str = evento.fecha_emision.strftime('%d de %B de %Y') if evento.fecha_emision else ''
         
         # Construir diccionario con todas las variables universales
+        # IMPORTANTE: Incluir todas las variaciones de nombres que se usan en los templates
         variables = {
             'NOMBRES': estudiante.nombres_completos,
-            'MODALIDAD': evento.get_modalidad_display(),
+            'MODALIDAD': evento.modalidad.nombre if evento.modalidad else '',
             'NOMBRE_EVENTO': evento.nombre_evento,
-            'DURACION': f'{evento.duracion_horas} horas',
+            'NOMBRE CURSO': evento.nombre_evento,  # Variación usada en templates
+            'DURACION': f'{evento.duracion_horas}' if evento.duracion_horas else '0',
+            'HORAS': f'{evento.duracion_horas}' if evento.duracion_horas else '0',  # Variación usada en templates
             'FECHA_INICIO': fecha_inicio_str,
             'FECHA_FIN': fecha_fin_str,
-            'TIPO': evento.get_tipo_display(),
-            'TIPO_EVENTO': evento.tipo_evento,
+            'TIPO': evento.tipo.nombre if evento.tipo else '',
+            'TIPO_EVENTO': evento.tipo_evento.nombre if evento.tipo_evento else '',
+            'TIPO DE EVENTO': evento.tipo_evento.nombre if evento.tipo_evento else '',  # Variación usada en templates
             'FECHA_EMISION': fecha_emision_str,
-            'OBJETIVO_PROGRAMA': evento.objetivo_programa,
-            'CONTENIDO': evento.contenido_programa,
+            'FECHA DE EMISION': fecha_emision_str,  # Variación usada en templates
+            'OBJETIVO_PROGRAMA': evento.objetivo_programa if evento.objetivo_programa else '',
+            'OBJETIVO DEL PROGRAMA': evento.objetivo_programa if evento.objetivo_programa else '',  # Variación usada en templates
+            'CONTENIDO': evento.contenido_programa if evento.contenido_programa else '',
         }
         
+        # Logging detallado para debugging
+        logger.info(f"[Variable Check] Estudiante: {estudiante.nombres_completos}")
+        logger.info(f"[Variable Check] TIPO: '{variables['TIPO']}' (evento.tipo: {evento.tipo})")
+        logger.info(f"[Variable Check] TIPO DE EVENTO: '{variables['TIPO DE EVENTO']}' (evento.tipo_evento: {evento.tipo_evento})")
+        logger.info(f"[Variable Check] FECHA DE EMISION: '{variables['FECHA DE EMISION']}' (evento.fecha_emision: {evento.fecha_emision})")
         logger.debug(f"Variables construidas para estudiante {estudiante.id}: {list(variables.keys())}")
         return variables

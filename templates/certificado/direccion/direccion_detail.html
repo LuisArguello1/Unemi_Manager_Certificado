@@ -1,0 +1,133 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="w-full">
+    <!-- Header -->
+    <div class="mb-6 bg-white p-4 border border-gray-200 rounded-sm shadow-sm">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-lg font-bold text-gray-800 uppercase tracking-tight">
+                    <i class="fas fa-folder text-indigo-600 mr-2"></i> {{ direccion.nombre }}
+                </h1>
+                <p class="text-xs text-gray-500 mt-1">
+                    Código: <span class="font-bold">{{ direccion.codigo }}</span>
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'certificado:direccion_edit' direccion.pk %}"
+                    class="inline-flex items-center px-3 py-1.5 border border-transparent rounded-sm shadow-sm text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors uppercase">
+                    <i class="fas fa-edit mr-1"></i> Editar
+                </a>
+                <a href="{% url 'certificado:direccion_delete' direccion.pk %}"
+                    class="inline-flex items-center px-3 py-1.5 border border-transparent rounded-sm shadow-sm text-xs font-medium text-white bg-red-600 hover:bg-red-700 transition-colors uppercase">
+                    <i class="fas fa-trash mr-1"></i> Eliminar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Info -->
+        <div class="lg:col-span-1">
+            <div class="bg-white shadow-sm rounded-sm border border-gray-200 p-4">
+                <h2 class="text-xs font-bold text-gray-700 uppercase mb-4 border-b pb-2">Información</h2>
+                
+                <div class="space-y-3">
+                    <div>
+                        <span class="text-[10px] text-gray-500 uppercase block font-bold">Código</span>
+                        <span class="text-xs text-gray-900 font-bold tracking-wider">{{ direccion.codigo }}</span>
+                    </div>
+                    
+                    <div>
+                        <span class="text-[10px] text-gray-500 uppercase block font-bold">Estado</span>
+                        {% if direccion.activo %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800">
+                            <i class="fas fa-check-circle mr-1"></i> Activa
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-800">
+                            <i class="fas fa-ban mr-1"></i> Inactiva
+                        </span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if direccion.descripcion %}
+                    <div>
+                        <span class="text-[10px] text-gray-500 uppercase block font-bold mb-1">Descripción</span>
+                        <p class="text-xs text-gray-700 leading-relaxed">{{ direccion.descripcion }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div>
+                        <span class="text-[10px] text-gray-500 uppercase block font-bold">Creada</span>
+                        <span class="text-xs text-gray-900">{{ direccion.created_at|date:"d/m/Y H:i" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plantillas -->
+        <div class="lg:col-span-2">
+            <div class="bg-white shadow-sm rounded-sm border border-gray-200 p-4">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-xs font-bold text-gray-700 uppercase">Plantillas Asociadas</h2>
+                    <a href="{% url 'certificado:plantilla_create' %}" 
+                        class="inline-flex items-center px-2 py-1 border border-transparent rounded-sm text-[10px] font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors uppercase">
+                        <i class="fas fa-plus mr-1"></i> Nueva Plantilla
+                    </a>
+                </div>
+
+                {% if plantillas %}
+                <div class="space-y-3">
+                    {% for plantilla in plantillas %}
+                    <div class="border border-gray-200 rounded-sm p-3 hover:bg-gray-50 transition-colors">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="text-xs font-bold text-gray-900 flex items-center">
+                                    <i class="far fa-file-word text-blue-600 mr-2"></i>
+                                    {{ plantilla.nombre }}
+                                    {% if plantilla.es_activa %}
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-green-100 text-green-800">
+                                        Activa
+                                    </span>
+                                    {% endif %}
+                                </h3>
+                                {% if plantilla.descripcion %}
+                                <p class="text-[10px] text-gray-500 mt-1">{{ plantilla.descripcion }}</p>
+                                {% endif %}
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    <i class="far fa-calendar-alt mr-1"></i>{{ plantilla.created_at|date:"d/m/Y" }}
+                                    <span class="mx-2">•</span>
+                                    {{ plantilla.variantes.count }} variante{{ plantilla.variantes.count|pluralize }}
+                                </p>
+                            </div>
+                            <div class="flex gap-1 ml-3">
+                                <a href="{% url 'certificado:plantilla_detail' plantilla.pk %}" 
+                                    class="p-1.5 text-[10px] border border-blue-300 rounded-sm text-blue-700 hover:bg-blue-50 transition-colors" 
+                                    title="Ver">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'certificado:plantilla_edit' plantilla.pk %}" 
+                                    class="p-1.5 text-[10px] border border-indigo-300 rounded-sm text-indigo-700 hover:bg-indigo-50 transition-colors" 
+                                    title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-8">
+                    <i class="far fa-file-word text-3xl text-gray-200 mb-2"></i>
+                    <p class="text-xs text-gray-500">Sin plantillas asociadas</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

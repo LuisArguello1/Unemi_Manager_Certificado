@@ -1,0 +1,60 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block title %}Eliminar Dirección{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-xl mx-auto">
+    <div class="bg-white shadow-xl shadow-red-50/50 rounded-2xl border border-red-200 overflow-hidden">
+        <div class="p-8">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-600 mb-4">
+                    <i class="fas fa-exclamation-triangle text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900">¿Eliminar Dirección?</h2>
+                <p class="text-sm text-gray-600 mt-2">
+                    Esta acción no se puede deshacer.
+                </p>
+            </div>
+
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                <p class="text-sm font-bold text-gray-900 mb-2">
+                    <i class="fas fa-building mr-2 text-red-600"></i>{{ direccion.nombre }}
+                </p>
+                <p class="text-xs text-gray-600 mb-1">Código: <strong>{{ direccion.codigo }}</strong></p>
+                
+                {% if num_plantillas > 0 or num_eventos > 0 %}
+                <div class="mt-4 p-3 bg-red-50 border-l-4 border-red-500 rounded-r">
+                    <p class="text-xs text-red-800 font-bold mb-2">
+                        <i class="fas fa-exclamation-circle mr-1"></i> ADVERTENCIA
+                    </p>
+                    <ul class="text-xs text-red-700 space-y-1">
+                        {% if num_plantillas > 0 %}
+                        <li>• Se eliminarán <strong>{{ num_plantillas }}</strong> plantilla{{ num_plantillas|pluralize }} asociada{{ num_plantillas|pluralize }}</li>
+                        {% endif %}
+                        {% if num_eventos > 0 %}
+                        <li>• Se eliminarán <strong>{{ num_eventos }}</strong> evento{{ num_eventos|pluralize }} asociado{{ num_eventos|pluralize }}</li>
+                        {% endif %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="flex items-center justify-between gap-4">
+                    <a href="{% url 'certificado:direccion_list' %}"
+                        class="flex-1 px-6 py-2.5 text-center text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        CANCELAR
+                    </a>
+                    <button type="submit"
+                        class="flex-1 px-6 py-2.5 bg-red-600 border border-transparent rounded-lg shadow-lg shadow-red-200 text-sm font-bold text-white hover:bg-red-700 hover:scale-[1.02] active:scale-95 focus:outline-none transition-all">
+                        <i class="fas fa-trash mr-2"></i>
+                        ELIMINAR
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

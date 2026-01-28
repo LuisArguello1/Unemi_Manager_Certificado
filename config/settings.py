@@ -358,11 +358,13 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutos máximo por tarea
 
 # Ruteo de tareas Celery a colas específicas
-CELERY_TASK_ROUTES = {
-    'apps.certificado.tasks.generate_and_send_certificate_task': {'queue': 'certificates'},
-    'apps.certificado.tasks.send_certificate_email_task': {'queue': 'emails'},
-    'apps.certificado.tasks.update_batch_progress_task': {'queue': 'default'},
-}
+# NOTA: Por ahora todas las tareas van a la cola por defecto 'celery'
+# Descomentar y configurar workers específicos si se necesitan colas separadas
+# CELERY_TASK_ROUTES = {
+#     'apps.certificado.tasks.generate_certificate_task': {'queue': 'certificates'},
+#     'apps.certificado.tasks.send_certificate_email_task': {'queue': 'emails'},
+#     'apps.certificado.tasks.update_batch_progress_task': {'queue': 'default'},
+# }
 
 # =============================================================================
 # CONFIGURACIÓN DE LÍMITES DE ENVÍO DE CORREOS
